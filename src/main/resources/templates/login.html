@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>Login</title>
+</head>
+<body onload="authenticateFidoWithConditional();">
+<div>
+    <p style="text-align: left;">Spring Security Login With Passkey</p>
+    <hr>
+    <div>
+        <form method="post" th:action="@{/login}">
+            <div th:if="${showErrorMsg}" th:text="${errorMsg}"></div>
+            <div th:if="${showLogoutedMsg}" th:text="${logoutedMsg}"></div>
+            <p>
+                <input type="text" id="username" name="username" autocomplete="username webauthn" placeholder="username" required>
+            </p>
+            <button class="btn" type="submit">next</button>
+        </form>
+    </div>
+
+    <hr>
+    <div>
+        <form name="authenticate" th:action="@{/login-fido2}" method="post">
+            <p hidden>
+                <input type="text" id="assertion" name="assertion">
+            </p>
+        </form>
+        <div>
+            <button hidden href="#" type="button" id="authenticatefido">Passkey login</button>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="js/index.js"></script>
+
+</body>
+</html>

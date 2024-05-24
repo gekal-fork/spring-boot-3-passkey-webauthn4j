@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Page</title>
+</head>
+<body>
+<div>
+    <div>
+        <p style="text-align: left;">My Page</p>
+        <div th:text="${username}"></div>
+        <hr>
+    </div>
+
+    <div>
+        <div>
+            <h3>Passkey Registration</h3>
+        </div>
+        <button href="#" type="button" id="registePasswordless">Register</button>
+        <div id="statusPasswordless">
+            ...
+        </div>
+        <hr>
+    </div>
+
+    <div>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit">Logout</button>
+        </form>
+        <hr>
+    </div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="js/index.js"></script>
+
+</body>
+</html>
