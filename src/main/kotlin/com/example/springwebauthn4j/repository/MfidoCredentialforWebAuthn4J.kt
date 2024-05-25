@@ -25,11 +25,14 @@ data class MfidoCredentialforWebAuthn4J(
     @Column(name="ID")
     var id: Int,
 
+    @Column(name="USER_INTERNAL_ID")
+    var userInternalId: String,
+
     @Column(name="CREDENTIAL_ID")
     var credentialId: ByteArray,
 
-    @Column(name="USER_INTERNAL_ID")
-    var userInternalId: String,
+    @Column(name="SIGN_COUNT")
+    var signCount: Long,
 
     @Column(name="ATTESTED_CREDENTIAL_DATA")
     var ateestedCredentialData: ByteArray,

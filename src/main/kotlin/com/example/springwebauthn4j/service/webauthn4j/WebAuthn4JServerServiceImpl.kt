@@ -8,6 +8,7 @@ import com.example.springwebauthn4j.service.AuthenticateOption
 import com.example.springwebauthn4j.service.FidoCredentialService
 import com.example.springwebauthn4j.service.RegisterOption
 import com.example.springwebauthn4j.service.WebAuthnServerService
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.webauthn4j.WebAuthnManager
 import com.webauthn4j.converter.exception.DataConversionException
 import com.webauthn4j.credential.CredentialRecordImpl
@@ -36,7 +37,6 @@ import org.springframework.stereotype.Service
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.concurrent.TimeUnit
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 
 @Service
@@ -88,17 +88,19 @@ class WebAuthn4JServerServiceImpl(
         // https://www.w3.org/TR/webauthn/#enumdef-attestationconveyancepreference
         val attestation = AttestationConveyancePreference.NONE
 
-        return RegisterOption(PublicKeyCredentialCreationOptions(
-            rp,
-            userInfo,
-            challenge,
-            pubKeyCredParams,
-            TimeUnit.SECONDS.toMillis(60),
-            excludeCredentials,
-            authenticatorSelectionCriteria,
-            attestation,
-            null
-        ))
+        return RegisterOption(
+            PublicKeyCredentialCreationOptions(
+                rp,
+                userInfo,
+                challenge,
+                pubKeyCredParams,
+                TimeUnit.SECONDS.toMillis(60),
+                excludeCredentials,
+                authenticatorSelectionCriteria,
+                attestation,
+                null
+            )
+        )
 
     }
 
@@ -107,8 +109,7 @@ class WebAuthn4JServerServiceImpl(
         publicKeyCredentialCreateResultJson: String,
     ): AttestationVerifyResult {
 
-        val mapper = jacksonObjectMapper()
-        val pkc = mapper.readValue(publicKeyCredentialCreateResultJson, PublicKeyCredentialCreateResult::class.java)
+        val pkc = PublicKeyCredentialCreateResultBuilder.build(publicKeyCredentialCreateResultJson)
 
         // Client properties
         val clientExtensionJSON: String? = null /* set clientExtensionJSON */
@@ -173,14 +174,16 @@ class WebAuthn4JServerServiceImpl(
         val challenge = DefaultChallenge()
         val allowCredentials = null
 
-        return AuthenticateOption(PublicKeyCredentialRequestOptions(
-            challenge,
-            TimeUnit.SECONDS.toMillis(60),
-            rp.id,
-            allowCredentials,
-            UserVerificationRequirement.REQUIRED,
-            null
-        ))
+        return AuthenticateOption(
+            PublicKeyCredentialRequestOptions(
+                challenge,
+                TimeUnit.SECONDS.toMillis(60),
+                rp.id,
+                allowCredentials,
+                UserVerificationRequirement.REQUIRED,
+                null
+            )
+        )
     }
 
     override fun verifyAuthenticateAssertion(
@@ -188,8 +191,7 @@ class WebAuthn4JServerServiceImpl(
         publicKeyCredentialGetResultJson: String,
     ): AssertionVerifyResult {
 
-        val mapper = jacksonObjectMapper()
-        val pkc = mapper.readValue(publicKeyCredentialGetResultJson, PublicKeyCredentialGetResult::class.java)
+        val pkc = PublicKeyCredentialGetResultBuilder.build(publicKeyCredentialGetResultJson)
         val decoder = Base64.getUrlDecoder()
         val credentialId = decoder.decode(pkc.id)
         val userHandle = decoder.decode(pkc.response!!.userHandle)
@@ -267,7 +269,20 @@ class WebAuthn4JServerServiceImpl(
         return String(userHandle, StandardCharsets.UTF_8)
     }
 
+    class PublicKeyCredentialCreateResultBuilder {
+        companion object {
+            fun build(publicKeyCredentialCreateResultJson: String): PublicKeyCredentialCreateResult {
+                val mapper = jacksonObjectMapper()
+                return mapper.readValue(
+                    publicKeyCredentialCreateResultJson,
+                    PublicKeyCredentialCreateResult::class.java
+                )
+            }
+        }
+    }
+
     class PublicKeyCredentialCreateResult {
+
         val id: String = ""
         val response: AuthenticatorAttestationResponse? = null
         val clientExtensionResults: AuthenticationExtensionsClientOutputs<ExtensionClientOutput>? = null
@@ -277,6 +292,18 @@ class WebAuthn4JServerServiceImpl(
             val attestationObject: String = ""
             val clientDataJSON: String = ""
             val transports: Set<String>? = null
+        }
+    }
+
+    class PublicKeyCredentialGetResultBuilder {
+        companion object {
+            fun build(publicKeyCredentialGet1ResultJson: String): PublicKeyCredentialGetResult {
+                val mapper = jacksonObjectMapper()
+                return mapper.readValue(
+                    publicKeyCredentialGet1ResultJson,
+                    PublicKeyCredentialGetResult::class.java
+                )
+            }
         }
     }
 

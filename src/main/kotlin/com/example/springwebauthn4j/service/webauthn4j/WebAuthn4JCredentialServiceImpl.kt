@@ -29,34 +29,14 @@ class WebAuthn4JCredentialServiceImpl(
         val serializedAttestedCredentialData =
             attestedCredentialDataConverter.convert(attestationVerifyResult.credentialRecord.attestedCredentialData)
 
-//        val attestationStatementEnvelope = AttestationStatementEnvelope(credentialRecord.attestationStatement)
-        val attestationStatementEnvelope = AttestationStatementEnvelope()
-        // TODO attestationStatement は NoneAttestationStatement
-        attestationStatementEnvelope.AttestationStatementEnvelope(attestationVerifyResult.credentialRecord.attestationStatement)
+        val entity = MfidoCredentialforWebAuthn4J(
+            0,
+            mUser.internalId,
+            attestationVerifyResult.credentialId,
+            attestationVerifyResult.credentialRecord.counter,
+            serializedAttestedCredentialData
+        )
 
-//
-//        val serializedEnvelope = objectConverter.cborConverter.writeValueAsBytes(attestationStatementEnvelope)
-
-//        val serializedTransports = objectConverter.jsonConverter.writeValueAsString(authenticator.transports)
-//        val serializedAuthenticatorExtensions =
-//            objectConverter.cborConverter.writeValueAsBytes(authenticator.authenticatorExtensions)
-//        val serializedClientExtensions =
-//            objectConverter.jsonConverter.writeValueAsString(authenticator.clientExtensions)
-
-        // save
-//        entityManager.persist(
-//            Credentials(
-//                Base64UrlUtil.encodeToString(credentialId),
-//                serializedAttestedCredentialData,
-//                serializedEnvelope,
-//                serializedTransports,
-//                serializedAuthenticatorExtensions,
-//                serializedClientExtensions,
-//                authenticator.counter
-//            )
-//        )
-
-        val entity = MfidoCredentialforWebAuthn4J(0, attestationVerifyResult.credentialId, mUser.internalId, serializedAttestedCredentialData)
         mFidoCredentialRepository.save(entity)
     }
 
@@ -64,30 +44,25 @@ class WebAuthn4JCredentialServiceImpl(
         val entityList = mFidoCredentialRepository.findByUserInternalId(userInternalId)
         val mFidoCredential = entityList.find { it.credentialId.contentEquals(credentialId) } ?: return null to null
 
+        val mUser = mUserRepository.findByInternalId(mFidoCredential.userInternalId) ?: return null to null
+
         // deserialize
         val objectConverter = ObjectConverter()
         val attestedCredentialDataConverter = AttestedCredentialDataConverter(objectConverter)
         val deserializedAttestedCredentialData = attestedCredentialDataConverter.convert(mFidoCredential.ateestedCredentialData)
 
-        // TODO ???
-        val attestationStatement = NoneAttestationStatement()
-        val authenticatorExtensions =
-            AuthenticationExtensionsAuthenticatorOutputs<RegistrationExtensionAuthenticatorOutput>()
-
         val credentialRecord = CredentialRecordImpl(
-            attestationStatement,
+            NoneAttestationStatement(),
             null,
             null,
             null,
-            0,      // counter
+            mFidoCredential.signCount,
             deserializedAttestedCredentialData,
-            authenticatorExtensions,
+            AuthenticationExtensionsAuthenticatorOutputs(),
             null,
             null,
             null
         )
-
-        val mUser = mUserRepository.findByInternalId(mFidoCredential.userInternalId) ?: return null to null
 
         return credentialRecord to mUser.userId
     }
