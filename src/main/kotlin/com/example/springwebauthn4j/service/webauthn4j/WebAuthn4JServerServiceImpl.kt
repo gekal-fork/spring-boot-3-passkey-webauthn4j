@@ -143,8 +143,7 @@ class WebAuthn4JServerServiceImpl(
 
         // expectations
         val pubKeyCredParams: List<PublicKeyCredentialParameters>? = null
-        val userVerificationRequired = false
-        val userPresenceRequired = true
+        val userVerificationRequired = true
 
         val registrationRequest = RegistrationRequest(
             attestationObject,
@@ -157,7 +156,6 @@ class WebAuthn4JServerServiceImpl(
             serverProperty,
             pubKeyCredParams,
             userVerificationRequired,
-            userPresenceRequired
         )
 
         val registrationData = try {
