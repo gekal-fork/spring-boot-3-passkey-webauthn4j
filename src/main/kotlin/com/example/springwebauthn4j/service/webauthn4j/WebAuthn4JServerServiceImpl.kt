@@ -46,7 +46,14 @@ class WebAuthn4JServerServiceImpl(
     private val mFidoCredentialRepository: MfidoCredentialRepository,
 ) : WebAuthnServerService {
 
-    private val rp = PublicKeyCredentialRpEntity("localhost", "webauthn4j-test")
+    private val rp = PublicKeyCredentialRpEntity(
+        // id: 自サイトのIDを指定する。通常はドメイン名を設定する
+        "localhost",
+        // name: 自サイトの名前を指定する
+        "webauthn4j-test"
+    )
+
+    // origin: 自サイトのオリジンを指定する、ここで許可されたオリジンからのリクエストのみ受け付ける
     private val origin = Origin.create("http://localhost:8080")
 
     override fun getRegisterOption(userId: String): RegisterOption {
@@ -60,6 +67,9 @@ class WebAuthn4JServerServiceImpl(
             mUser.displayName,                  // displayName
         )
 
+        // PublicKeyCredentialParameters の指定はどうするのがいいのか今ひとつわからないんですけど、
+        // WEB+DB PRESS Vol.136 第3章 パスキー実装の基礎知識 のサンプルの通りに指定した
+        // https://gihyo.jp/magazine/wdpress/archive/2023/vol136
         val pubKeyCredParams = listOf(
             PublicKeyCredentialParameters(
                 PublicKeyCredentialType.PUBLIC_KEY,
@@ -71,6 +81,7 @@ class WebAuthn4JServerServiceImpl(
             )
         )
 
+        // このユーザーで登録済みのクレデンシャルを設定する
         val excludeCredentials = mFidoCredentialRepository.findByUserInternalId(mUser.internalId).map { credential ->
             PublicKeyCredentialDescriptor(
                 PublicKeyCredentialType.PUBLIC_KEY,
@@ -80,27 +91,33 @@ class WebAuthn4JServerServiceImpl(
         }
 
         val authenticatorSelectionCriteria = AuthenticatorSelectionCriteria(
+            // authenticatorAttachment: 認証器の種類を指定する。とくにこだわらないので何でもヨシのnull
             null,
+            // requireResidentKey: パスキーとして登録する場合は REQUIRED を指定すること
             true,
+            // パスキーとして登録する場合は REQUIRED を指定すること
             UserVerificationRequirement.REQUIRED
         )
 
-        // https://www.w3.org/TR/webauthn/#enumdef-attestationconveyancepreference
+        // 登録結果(attestation)に署名をつけるかどうかを指定する。
+        // NONE: 署名無しを指定する
+        // 署名が付く場合、attestationStatementに署名、formatに署名形式が含まれる
+        // 署名形式は packed, tpm, android-key など種類があって検証方法も異なるが、ここではNONE指定なので深く考えないことにする
         val attestation = AttestationConveyancePreference.NONE
 
-        return RegisterOption(
-            PublicKeyCredentialCreationOptions(
-                rp,
-                userInfo,
-                challenge,
-                pubKeyCredParams,
-                TimeUnit.SECONDS.toMillis(60),
-                excludeCredentials,
-                authenticatorSelectionCriteria,
-                attestation,
-                null
-            )
+        val option = PublicKeyCredentialCreationOptions(
+            rp,
+            userInfo,
+            challenge,
+            pubKeyCredParams,
+            TimeUnit.SECONDS.toMillis(60),
+            excludeCredentials,
+            authenticatorSelectionCriteria,
+            attestation,
+            null
         )
+
+        return RegisterOption(option)
 
     }
 
