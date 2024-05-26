@@ -93,7 +93,7 @@ class WebAuthn4JServerServiceImpl(
         val authenticatorSelectionCriteria = AuthenticatorSelectionCriteria(
             // authenticatorAttachment: 認証器の種類を指定する。とくにこだわらないので何でもヨシのnull
             null,
-            // requireResidentKey: パスキーとして登録する場合は REQUIRED を指定すること
+            // requireResidentKey: パスキーとして登録する場合は true を指定すること
             true,
             // パスキーとして登録する場合は REQUIRED を指定すること
             UserVerificationRequirement.REQUIRED
