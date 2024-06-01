@@ -11,22 +11,9 @@ import com.example.springwebauthn4j.service.WebAuthnServerService
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.webauthn4j.WebAuthnManager
 import com.webauthn4j.converter.exception.DataConversionException
+import com.webauthn4j.credential.CredentialRecord
 import com.webauthn4j.credential.CredentialRecordImpl
-import com.webauthn4j.data.AttestationConveyancePreference
-import com.webauthn4j.data.AuthenticationParameters
-import com.webauthn4j.data.AuthenticationRequest
-import com.webauthn4j.data.AuthenticatorSelectionCriteria
-import com.webauthn4j.data.PublicKeyCredentialCreationOptions
-import com.webauthn4j.data.PublicKeyCredentialDescriptor
-import com.webauthn4j.data.PublicKeyCredentialParameters
-import com.webauthn4j.data.PublicKeyCredentialRequestOptions
-import com.webauthn4j.data.PublicKeyCredentialRpEntity
-import com.webauthn4j.data.PublicKeyCredentialType
-import com.webauthn4j.data.PublicKeyCredentialUserEntity
-import com.webauthn4j.data.RegistrationData
-import com.webauthn4j.data.RegistrationParameters
-import com.webauthn4j.data.RegistrationRequest
-import com.webauthn4j.data.UserVerificationRequirement
+import com.webauthn4j.data.*
 import com.webauthn4j.data.attestation.statement.COSEAlgorithmIdentifier
 import com.webauthn4j.data.client.Origin
 import com.webauthn4j.data.client.challenge.DefaultChallenge
@@ -233,57 +220,16 @@ class WebAuthn4JServerServiceImpl(
         publicKeyCredentialGetResultJson: String,
     ): AssertionVerifyResult {
 
-        val pkc = PublicKeyCredentialGetResultBuilder.build(publicKeyCredentialGetResultJson)
-        val decoder = Base64.getUrlDecoder()
-        val credentialId = decoder.decode(pkc.id)
-        val userHandle = decoder.decode(pkc.response!!.userHandle)
-        val authenticatorData = decoder.decode(pkc.response.authenticatorData)
-        val clientDataJSON = decoder.decode(pkc.response.clientDataJSON)
-        val signature: ByteArray = decoder.decode(pkc.response.signature)
-
-        // Client properties
-        val clientExtensionJSON: String? = null /* set clientExtensionJSON */
-
-        // Server properties
-        val challenge = DefaultChallenge(authenticateOption.publicKeyCredentialRequestOptions.challenge.toString())
-        val tokenBindingId: ByteArray? = null /* set tokenBindingId */
-        val serverProperty = ServerProperty(origin, rp.id!!, challenge, tokenBindingId)
-
-        // expectations
-        val allowCredentials: List<ByteArray>? = null
-        val userVerificationRequired = true
-        val userPresenceRequired = true
+        val authenticationData = createAuthenticationData(publicKeyCredentialGetResultJson)
 
         // credentialRecord
-        val userInternalId = String(userHandle)
-        val (credentialRecord, userId) = mFidoCredentialService.load(userInternalId, credentialId)
+        val userInternalId = String(authenticationData.userHandle!!)
+        val (credentialRecord, userId) = mFidoCredentialService.load(userInternalId, authenticationData.credentialId!!)
         if (credentialRecord == null || userId.isNullOrEmpty()) {
             return AssertionVerifyResult(false, "")
         }
 
-        val authenticationRequest = AuthenticationRequest(
-            credentialId,
-            userHandle,
-            authenticatorData,
-            clientDataJSON,
-            clientExtensionJSON,
-            signature,
-        )
-
-        val authenticationParameters = AuthenticationParameters(
-            serverProperty,
-            credentialRecord,
-            allowCredentials,
-            userVerificationRequired,
-            userPresenceRequired
-        )
-
-        val authenticationData = try {
-            WebAuthnManager.createNonStrictWebAuthnManager().parse(authenticationRequest)
-        } catch (e: DataConversionException) {
-            // If you would like to handle WebAuthn data structure parse error, please catch DataConversionException
-            throw e
-        }
+        val authenticationParameters = createAuthenticationParameters(authenticateOption, credentialRecord)
 
         try {
             WebAuthnManager.createNonStrictWebAuthnManager().validate(authenticationData, authenticationParameters)
@@ -299,6 +245,60 @@ class WebAuthn4JServerServiceImpl(
 //        )
 
         return AssertionVerifyResult(true, userId)
+    }
+
+    private fun createAuthenticationData(publicKeyCredentialGetResultJson: String): AuthenticationData {
+
+        val pkc = PublicKeyCredentialGetResultBuilder.build(publicKeyCredentialGetResultJson)
+        val decoder = Base64.getUrlDecoder()
+        val credentialId = decoder.decode(pkc.id)
+        val userHandle = decoder.decode(pkc.response!!.userHandle)
+        val authenticatorData = decoder.decode(pkc.response.authenticatorData)
+        val clientDataJSON = decoder.decode(pkc.response.clientDataJSON)
+        val signature: ByteArray = decoder.decode(pkc.response.signature)
+        val clientExtensionJSON = null
+
+        val authenticationRequest = AuthenticationRequest(
+            credentialId,
+            userHandle,
+            authenticatorData,
+            clientDataJSON,
+            clientExtensionJSON,
+            signature,
+        )
+
+        val authenticationData = try {
+            WebAuthnManager.createNonStrictWebAuthnManager().parse(authenticationRequest)
+        } catch (e: DataConversionException) {
+            // If you would like to handle WebAuthn data structure parse error, please catch DataConversionException
+            throw e
+        }
+
+        return authenticationData
+    }
+
+    private fun createAuthenticationParameters(
+        authenticateOption: AuthenticateOption,
+        credentialRecord: CredentialRecord,
+    ): AuthenticationParameters {
+
+        val challenge = DefaultChallenge(authenticateOption.publicKeyCredentialRequestOptions.challenge.toString())
+        val tokenBindingId = null
+        val serverProperty = ServerProperty(origin, rp.id!!, challenge, tokenBindingId)
+
+        val allowCredentials = null
+        val userVerificationRequired = true
+        val userPresenceRequired = true
+
+        val authenticationParameters = AuthenticationParameters(
+            serverProperty,
+            credentialRecord,
+            allowCredentials,
+            userVerificationRequired,
+            userPresenceRequired
+        )
+
+        return authenticationParameters
     }
 
     private fun createUserId(userId: String): ByteArray {
