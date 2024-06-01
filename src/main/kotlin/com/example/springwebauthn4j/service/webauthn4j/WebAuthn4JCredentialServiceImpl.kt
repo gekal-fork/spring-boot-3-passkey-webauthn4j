@@ -11,7 +11,6 @@ import com.webauthn4j.credential.CredentialRecord
 import com.webauthn4j.credential.CredentialRecordImpl
 import com.webauthn4j.data.attestation.statement.NoneAttestationStatement
 import com.webauthn4j.data.extension.authenticator.AuthenticationExtensionsAuthenticatorOutputs
-import com.webauthn4j.data.extension.authenticator.RegistrationExtensionAuthenticatorOutput
 import org.springframework.stereotype.Service
 
 

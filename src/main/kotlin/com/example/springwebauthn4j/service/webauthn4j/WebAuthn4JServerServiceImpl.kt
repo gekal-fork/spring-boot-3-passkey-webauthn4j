@@ -13,7 +13,22 @@ import com.webauthn4j.WebAuthnManager
 import com.webauthn4j.converter.exception.DataConversionException
 import com.webauthn4j.credential.CredentialRecord
 import com.webauthn4j.credential.CredentialRecordImpl
-import com.webauthn4j.data.*
+import com.webauthn4j.data.AttestationConveyancePreference
+import com.webauthn4j.data.AuthenticationData
+import com.webauthn4j.data.AuthenticationParameters
+import com.webauthn4j.data.AuthenticationRequest
+import com.webauthn4j.data.AuthenticatorSelectionCriteria
+import com.webauthn4j.data.PublicKeyCredentialCreationOptions
+import com.webauthn4j.data.PublicKeyCredentialDescriptor
+import com.webauthn4j.data.PublicKeyCredentialParameters
+import com.webauthn4j.data.PublicKeyCredentialRequestOptions
+import com.webauthn4j.data.PublicKeyCredentialRpEntity
+import com.webauthn4j.data.PublicKeyCredentialType
+import com.webauthn4j.data.PublicKeyCredentialUserEntity
+import com.webauthn4j.data.RegistrationData
+import com.webauthn4j.data.RegistrationParameters
+import com.webauthn4j.data.RegistrationRequest
+import com.webauthn4j.data.UserVerificationRequirement
 import com.webauthn4j.data.attestation.statement.COSEAlgorithmIdentifier
 import com.webauthn4j.data.client.Origin
 import com.webauthn4j.data.client.challenge.DefaultChallenge
@@ -166,25 +181,21 @@ class WebAuthn4JServerServiceImpl(
     }
 
     private fun createRegistrationParameters(registerOption: RegisterOption): RegistrationParameters {
-        // 最初に送ったチャレンジを指定する
+        // 最初に送ったチャレンジ
         val challenge = DefaultChallenge(registerOption.publicKeyCredentialCreationOptions.challenge.toString())
-
-        // Token Binding ID による検証を行う場合は指定する
-        // Token Bindingの検証エラーの場合、TokenBindingException が発生する
-        // 今回は使わないので null を指定する
-        val tokenBindingId: ByteArray? = null
 
         val serverProperty = ServerProperty(
             origin,
             rp.id!!,
             challenge,
-            tokenBindingId
+            // tokenBindingId: Token Binding ID による検証は行わないので null を指定する
+            null
         )
 
         // RPが希望する公開鍵のアルゴリズムを指定する
         // ここで指定されたアルゴリズム以外で署名されている場合は NotAllowedAlgorithmException が発生する
         // 今回は何でもOKなので null を指定する
-        val pubKeyCredParams: List<PublicKeyCredentialParameters>? = null
+        val pubKeyCredParams = null
 
         // ユーザーがちゃんと認証を行ったかどうかを指定する
         // パスキーの場合はtrueを指定すること
@@ -200,16 +211,19 @@ class WebAuthn4JServerServiceImpl(
     }
 
     override fun getAuthenticateOption(): AuthenticateOption {
+        // チャレンジを生成する
         val challenge = DefaultChallenge()
-        val allowCredentials = null
 
         return AuthenticateOption(
             PublicKeyCredentialRequestOptions(
                 challenge,
                 TimeUnit.SECONDS.toMillis(60),
                 rp.id,
-                allowCredentials,
+                // allowCredentials: 認証時に指定するクレデンシャル、パスキーの場合は null を指定する
+                null,
+                // userVerification: パスキーの場合は REQUIRED を指定する
                 UserVerificationRequirement.REQUIRED,
+                // extensions: 拡張機能は使わないので null を指定する
                 null
             )
         )
@@ -238,32 +252,26 @@ class WebAuthn4JServerServiceImpl(
             throw e
         }
 
-//        // please update the counter of the authenticator record
-//        updateCounter(
-//            authenticationData.getCredentialId(),
-//            authenticationData.getAuthenticatorData().getSignCount()
-//        )
-
         return AssertionVerifyResult(true, userId)
     }
 
     private fun createAuthenticationData(publicKeyCredentialGetResultJson: String): AuthenticationData {
-
         val pkc = PublicKeyCredentialGetResultBuilder.build(publicKeyCredentialGetResultJson)
+
         val decoder = Base64.getUrlDecoder()
         val credentialId = decoder.decode(pkc.id)
         val userHandle = decoder.decode(pkc.response!!.userHandle)
         val authenticatorData = decoder.decode(pkc.response.authenticatorData)
         val clientDataJSON = decoder.decode(pkc.response.clientDataJSON)
-        val signature: ByteArray = decoder.decode(pkc.response.signature)
-        val clientExtensionJSON = null
+        val signature = decoder.decode(pkc.response.signature)
 
         val authenticationRequest = AuthenticationRequest(
             credentialId,
             userHandle,
             authenticatorData,
             clientDataJSON,
-            clientExtensionJSON,
+            // clientExtensionsJSON: 拡張機能は使わないので null を指定する
+            null,
             signature,
         )
 
@@ -281,21 +289,26 @@ class WebAuthn4JServerServiceImpl(
         authenticateOption: AuthenticateOption,
         credentialRecord: CredentialRecord,
     ): AuthenticationParameters {
-
+        // 最初に送ったチャレンジ
         val challenge = DefaultChallenge(authenticateOption.publicKeyCredentialRequestOptions.challenge.toString())
-        val tokenBindingId = null
-        val serverProperty = ServerProperty(origin, rp.id!!, challenge, tokenBindingId)
 
-        val allowCredentials = null
-        val userVerificationRequired = true
-        val userPresenceRequired = true
+        val serverProperty = ServerProperty(
+            origin,
+            rp.id!!,
+            challenge,
+            // tokenBindingId: Token Binding ID による検証は行わないので null を指定する
+            null
+        )
 
         val authenticationParameters = AuthenticationParameters(
             serverProperty,
             credentialRecord,
-            allowCredentials,
-            userVerificationRequired,
-            userPresenceRequired
+            // allowCredentials: 認証時に指定するクレデンシャル、パスキーの場合は null を指定する
+            null,
+            // userVerificationRequired: パスキーの場合は true を指定する
+            true,
+            // userPresenceRequired: パスキーの場合は true を指定する
+            true
         )
 
         return authenticationParameters
