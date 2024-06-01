@@ -23,6 +23,7 @@ import com.webauthn4j.data.PublicKeyCredentialRequestOptions
 import com.webauthn4j.data.PublicKeyCredentialRpEntity
 import com.webauthn4j.data.PublicKeyCredentialType
 import com.webauthn4j.data.PublicKeyCredentialUserEntity
+import com.webauthn4j.data.RegistrationData
 import com.webauthn4j.data.RegistrationParameters
 import com.webauthn4j.data.RegistrationRequest
 import com.webauthn4j.data.UserVerificationRequirement
@@ -126,44 +127,8 @@ class WebAuthn4JServerServiceImpl(
         publicKeyCredentialCreateResultJson: String,
     ): AttestationVerifyResult {
 
-        val pkc = PublicKeyCredentialCreateResultBuilder.build(publicKeyCredentialCreateResultJson)
-
-        // Client properties
-        val clientExtensionJSON: String? = null /* set clientExtensionJSON */
-        val transports = pkc.response!!.transports
-
-        // Server properties
-        val decoder = Base64.getUrlDecoder()
-        val attestationObject = decoder.decode(pkc.response.attestationObject)
-        val clientDataJSON = decoder.decode(pkc.response.clientDataJSON)
-
-        val challenge = DefaultChallenge(registerOption.publicKeyCredentialCreationOptions.challenge.toString())
-        val tokenBindingId: ByteArray? = null /* set tokenBindingId */
-        val serverProperty = ServerProperty(origin, rp.id!!, challenge, tokenBindingId)
-
-        // expectations
-        val pubKeyCredParams: List<PublicKeyCredentialParameters>? = null
-        val userVerificationRequired = true
-
-        val registrationRequest = RegistrationRequest(
-            attestationObject,
-            clientDataJSON,
-            clientExtensionJSON,
-            transports
-        )
-
-        val registrationParameters = RegistrationParameters(
-            serverProperty,
-            pubKeyCredParams,
-            userVerificationRequired,
-        )
-
-        val registrationData = try {
-            WebAuthnManager.createNonStrictWebAuthnManager().parse(registrationRequest)
-        } catch (e: DataConversionException) {
-            // If you would like to handle WebAuthn data structure parse error, please catch DataConversionException
-            throw e
-        }
+        val registrationData = createRegistrationData(publicKeyCredentialCreateResultJson)
+        val registrationParameters = createRegistrationParameters(registerOption)
 
         try {
             WebAuthnManager.createNonStrictWebAuthnManager().validate(registrationData, registrationParameters)
@@ -183,6 +148,68 @@ class WebAuthn4JServerServiceImpl(
         val credentialId = registrationData.attestationObject!!.authenticatorData.attestedCredentialData!!.credentialId
 
         return AttestationVerifyResult(credentialId, credentialRecord)
+    }
+
+    private fun createRegistrationData(publicKeyCredentialCreateResultJson: String): RegistrationData {
+        val pkc = PublicKeyCredentialCreateResultBuilder.build(publicKeyCredentialCreateResultJson)
+        if (pkc.response == null) {
+            throw RuntimeException("response is null")
+        }
+
+        val decoder = Base64.getUrlDecoder()
+        val attestationObject = decoder.decode(pkc.response.attestationObject)
+        val clientDataJSON = decoder.decode(pkc.response.clientDataJSON)
+
+        val registrationRequest = RegistrationRequest(
+            attestationObject,
+            clientDataJSON,
+            // clientExtensionsJSON: 登録オプションでExtensionは何も指定してないのでこちらも未指定にする
+            null,
+            pkc.response.transports
+        )
+
+        val registrationData = try {
+            WebAuthnManager.createNonStrictWebAuthnManager().parse(registrationRequest)
+        } catch (e: DataConversionException) {
+            // If you would like to handle WebAuthn data structure parse error, please catch DataConversionException
+            throw e
+        }
+
+        return registrationData
+    }
+
+    private fun createRegistrationParameters(registerOption: RegisterOption): RegistrationParameters {
+        // 最初に送ったチャレンジを指定する
+        val challenge = DefaultChallenge(registerOption.publicKeyCredentialCreationOptions.challenge.toString())
+
+        // Token Binding ID による検証を行う場合は指定する
+        // Token Bindingの検証エラーの場合、TokenBindingException が発生する
+        // 今回は使わないので null を指定する
+        val tokenBindingId: ByteArray? = null
+
+        val serverProperty = ServerProperty(
+            origin,
+            rp.id!!,
+            challenge,
+            tokenBindingId
+        )
+
+        // RPが希望する公開鍵のアルゴリズムを指定する
+        // ここで指定されたアルゴリズム以外で署名されている場合は NotAllowedAlgorithmException が発生する
+        // 今回は何でもOKなので null を指定する
+        val pubKeyCredParams: List<PublicKeyCredentialParameters>? = null
+
+        // ユーザーがちゃんと認証を行ったかどうかを指定する
+        // パスキーの場合はtrueを指定すること
+        val userVerificationRequired = true
+
+        val registrationParameters = RegistrationParameters(
+            serverProperty,
+            pubKeyCredParams,
+            userVerificationRequired,
+        )
+
+        return registrationParameters
     }
 
     override fun getAuthenticateOption(): AuthenticateOption {
