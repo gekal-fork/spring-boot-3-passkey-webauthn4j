@@ -117,6 +117,7 @@ class WebAuthn4JServerServiceImpl(
             excludeCredentials,
             authenticatorSelectionCriteria,
             attestation,
+            // extensions: 拡張機能は使わないので null を指定する
             null
         )
 
