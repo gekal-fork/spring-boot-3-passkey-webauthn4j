@@ -17,9 +17,11 @@ import com.webauthn4j.data.AttestationConveyancePreference
 import com.webauthn4j.data.AuthenticationData
 import com.webauthn4j.data.AuthenticationParameters
 import com.webauthn4j.data.AuthenticationRequest
+import com.webauthn4j.data.AuthenticatorAttachment
 import com.webauthn4j.data.AuthenticatorSelectionCriteria
 import com.webauthn4j.data.PublicKeyCredentialCreationOptions
 import com.webauthn4j.data.PublicKeyCredentialDescriptor
+import com.webauthn4j.data.PublicKeyCredentialHints
 import com.webauthn4j.data.PublicKeyCredentialParameters
 import com.webauthn4j.data.PublicKeyCredentialRequestOptions
 import com.webauthn4j.data.PublicKeyCredentialRpEntity
@@ -35,7 +37,7 @@ import com.webauthn4j.data.client.challenge.DefaultChallenge
 import com.webauthn4j.data.extension.client.AuthenticationExtensionsClientOutputs
 import com.webauthn4j.data.extension.client.ExtensionClientOutput
 import com.webauthn4j.server.ServerProperty
-import com.webauthn4j.validator.exception.ValidationException
+import com.webauthn4j.verifier.exception.VerificationException
 import org.springframework.stereotype.Service
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -95,7 +97,9 @@ class WebAuthn4JServerServiceImpl(
 
         val authenticatorSelectionCriteria = AuthenticatorSelectionCriteria(
             // authenticatorAttachment: 認証器の種類を指定する。とくにこだわらないので何でもヨシのnull
-            null,
+//            AuthenticatorAttachment.PLATFORM,
+            AuthenticatorAttachment.CROSS_PLATFORM,
+//            null,
             // requireResidentKey: パスキーとして登録する場合は true を指定すること
             true,
             // パスキーとして登録する場合は REQUIRED を指定すること
@@ -108,6 +112,13 @@ class WebAuthn4JServerServiceImpl(
         // 署名形式は packed, tpm, android-key など種類があって検証方法も異なるが、ここではNONE指定なので深く考えないことにする
         val attestation = AttestationConveyancePreference.NONE
 
+        val hints = listOf(
+//            PublicKeyCredentialHints.create("hybrid"),
+//            PublicKeyCredentialHints.create("client-device"),
+            PublicKeyCredentialHints.create("security-key"),
+            )
+//        val hints = null
+
         val option = PublicKeyCredentialCreationOptions(
             rp,
             userInfo,
@@ -116,6 +127,7 @@ class WebAuthn4JServerServiceImpl(
             TimeUnit.SECONDS.toMillis(60),
             excludeCredentials,
             authenticatorSelectionCriteria,
+            hints,
             attestation,
             // extensions: 拡張機能は使わないので null を指定する
             null
@@ -134,8 +146,8 @@ class WebAuthn4JServerServiceImpl(
         val registrationParameters = createRegistrationParameters(registerOption)
 
         try {
-            WebAuthnManager.createNonStrictWebAuthnManager().validate(registrationData, registrationParameters)
-        } catch (e: ValidationException) {
+            WebAuthnManager.createNonStrictWebAuthnManager().verify(registrationData, registrationParameters)
+        } catch (e: VerificationException) {
             // If you would like to handle WebAuthn data validation error, please catch ValidationException
             throw e
         }
@@ -247,8 +259,8 @@ class WebAuthn4JServerServiceImpl(
         val authenticationParameters = createAuthenticationParameters(authenticateOption, credentialRecord)
 
         try {
-            WebAuthnManager.createNonStrictWebAuthnManager().validate(authenticationData, authenticationParameters)
-        } catch (e: ValidationException) {
+            WebAuthnManager.createNonStrictWebAuthnManager().verify(authenticationData, authenticationParameters)
+        } catch (e: VerificationException) {
             // If you would like to handle WebAuthn data validation error, please catch ValidationException
             throw e
         }

@@ -5,6 +5,7 @@ import com.example.springwebauthn4j.service.Status
 import com.webauthn4j.data.AttestationConveyancePreference
 import com.webauthn4j.data.AuthenticatorSelectionCriteria
 import com.webauthn4j.data.PublicKeyCredentialDescriptor
+import com.webauthn4j.data.PublicKeyCredentialHints
 import com.webauthn4j.data.PublicKeyCredentialParameters
 import com.webauthn4j.data.PublicKeyCredentialRpEntity
 import com.webauthn4j.data.PublicKeyCredentialUserEntity
@@ -21,11 +22,13 @@ class ServerPublicKeyCredentialCreationOptionsResponse(
     val pubKeyCredParams: List<PublicKeyCredentialParameters>?,
     val timeout: Long?,
     val extensions: AuthenticationExtensionsClientInputs<RegistrationExtensionClientInput>?,
+    val hints: List<PublicKeyCredentialHints>?,
 ) : ServerResponse(Status.OK, "") {
     constructor(
         status: Status,
         errorMessage: String,
     ) : this(
+        null,
         null,
         null,
         null,
@@ -52,5 +55,6 @@ class ServerPublicKeyCredentialCreationOptionsResponse(
         registerOption.publicKeyCredentialCreationOptions.pubKeyCredParams,
         registerOption.publicKeyCredentialCreationOptions.timeout,
         registerOption.publicKeyCredentialCreationOptions.extensions,
+        registerOption.publicKeyCredentialCreationOptions.hints,
     )
 }
