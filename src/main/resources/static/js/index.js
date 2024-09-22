@@ -1,6 +1,7 @@
 $(window).on('load', function () {
     $("#registePasswordless").on('click', () => registerPasswordlessButtonClicked());
     $("#authenticatefido").on('click', () => authenticateFido());
+    $("#conditionalRegistration").on('click', () => conditionalRegistrationButtonClicked());
 });
 
 const abortController = new AbortController();
@@ -12,7 +13,7 @@ const abortSignal = abortController.signal;
 function registerPasswordlessButtonClicked() {
     getRegChallenge()
         .then(createCredentialOptions => {
-            return createCredential(createCredentialOptions);
+            return createCredential(createCredentialOptions, false);
         })
         .then(() => {
             $("#statusPasswordless").text("Successfully created credential");
@@ -20,6 +21,53 @@ function registerPasswordlessButtonClicked() {
         .catch(e => {
             $("#statusPasswordless").text("Error: " + e);
         });
+}
+
+async function conditionalRegistrationButtonClicked() {
+    if (!(await checkConditionalRegistrationEnable())) {
+        return;
+    }
+
+    getRegChallenge()
+        .then(createCredentialOptions => {
+            return createCredential(createCredentialOptions, true);
+        })
+        .then(() => {
+            $("#statusConditionalRegistration").text("Successfully created credential");
+        })
+        .catch(e => {
+            $("#statusConditionalRegistration").text("Error: " + e);
+        });
+}
+
+async function checkConditionalRegistrationEnable() {
+    // Check if PublicKeyCredential is supported in the current browser
+    if (typeof PublicKeyCredential === 'undefined') {
+        $("#statusConditionalRegistration").text("Error: PublicKeyCredential is not supported in this browser.");
+        return false;
+    }
+
+    // Check if getClientCapabilities method exists on PublicKeyCredential
+    if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
+        try {
+            let capabilities = await PublicKeyCredential.getClientCapabilities();
+            if (!capabilities.conditionalCreate) {
+                $("#statusConditionalRegistration").text("Conditional create is not supported. Do not continue with mediation.");
+                // Do not continue with mediation
+            } else {
+                $("#statusConditionalRegistration").text("Conditional create is supported. Continue with mediation.");
+                // Continue with mediation
+                return true;
+            }
+        } catch (error) {
+            $("#statusConditionalRegistration").text("Error getting client capabilities:" + error);
+            // Handle the error appropriately
+        }
+    } else {
+        $("#statusConditionalRegistration").text("Error: getClientCapabilities is not supported in this browser");
+        // Handle the case where the method is not supported
+    }
+    return false;
 }
 
 /**
@@ -156,12 +204,17 @@ function base64UrlEncode(arrayBuffer) {
         .replace(/\//g, "_");
 }
 
-function createCredential(options) {
+function createCredential(options, isConditional) {
     if (!PublicKeyCredential || typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
         return Promise.reject("WebAuthn APIs are not available on this user agent.");
     }
 
-    return navigator.credentials.create({publicKey: options, signal: abortSignal})
+    let publicKeyCredentialCreationOptions = {
+        publicKey: options,
+        ...(isConditional && { mediation: "conditional" })
+    };
+
+    return navigator.credentials.create(publicKeyCredentialCreationOptions)
         .then(createResponse => {
             let publicKeyCredential = {
                 id: base64UrlEncode(createResponse.rawId),

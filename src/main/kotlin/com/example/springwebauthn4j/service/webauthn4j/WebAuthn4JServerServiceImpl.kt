@@ -98,8 +98,8 @@ class WebAuthn4JServerServiceImpl(
         val authenticatorSelectionCriteria = AuthenticatorSelectionCriteria(
             // authenticatorAttachment: 認証器の種類を指定する。とくにこだわらないので何でもヨシのnull
 //            AuthenticatorAttachment.PLATFORM,
-            AuthenticatorAttachment.CROSS_PLATFORM,
-//            null,
+//            AuthenticatorAttachment.CROSS_PLATFORM,
+            null,
             // requireResidentKey: パスキーとして登録する場合は true を指定すること
             true,
             // パスキーとして登録する場合は REQUIRED を指定すること
@@ -112,12 +112,12 @@ class WebAuthn4JServerServiceImpl(
         // 署名形式は packed, tpm, android-key など種類があって検証方法も異なるが、ここではNONE指定なので深く考えないことにする
         val attestation = AttestationConveyancePreference.NONE
 
-        val hints = listOf(
+//        val hints = listOf(
 //            PublicKeyCredentialHints.create("hybrid"),
 //            PublicKeyCredentialHints.create("client-device"),
-            PublicKeyCredentialHints.create("security-key"),
-            )
-//        val hints = null
+//            PublicKeyCredentialHints.create("security-key"),
+//            )
+        val hints = null
 
         val option = PublicKeyCredentialCreationOptions(
             rp,
@@ -212,12 +212,16 @@ class WebAuthn4JServerServiceImpl(
 
         // ユーザーがちゃんと認証を行ったかどうかを指定する
         // パスキーの場合はtrueを指定すること
-        val userVerificationRequired = true
+//        val userVerificationRequired = true
+//        val userPresenceRequired = true
+        val userVerificationRequired = false
+        val userPresenceRequired = false
 
         val registrationParameters = RegistrationParameters(
             serverProperty,
             pubKeyCredParams,
             userVerificationRequired,
+            userPresenceRequired,
         )
 
         return registrationParameters
