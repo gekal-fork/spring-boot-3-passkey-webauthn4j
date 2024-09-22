@@ -212,8 +212,10 @@ class WebAuthn4JServerServiceImpl(
 
         // ユーザーがちゃんと認証を行ったかどうかを指定する
         // パスキーの場合はtrueを指定すること
-//        val userVerificationRequired = true
-//        val userPresenceRequired = true
+        // val userVerificationRequired = true
+        // val userPresenceRequired = true
+
+        // Automatic Passkey Upgrades のときは UV, UP のチェックをしない
         val userVerificationRequired = false
         val userPresenceRequired = false
 
