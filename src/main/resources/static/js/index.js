@@ -24,7 +24,7 @@ function registerPasswordlessButtonClicked() {
 }
 
 async function conditionalRegistrationButtonClicked() {
-    if (!(await checkConditionalRegistrationEnable())) {
+    if (!(await isConditionalRegistrationEnable())) {
         return;
     }
 
@@ -40,7 +40,7 @@ async function conditionalRegistrationButtonClicked() {
         });
 }
 
-async function checkConditionalRegistrationEnable() {
+async function isConditionalRegistrationEnable() {
     // Check if PublicKeyCredential is supported in the current browser
     if (typeof PublicKeyCredential === 'undefined') {
         $("#statusConditionalRegistration").text("Error: PublicKeyCredential is not supported in this browser.");
@@ -55,7 +55,7 @@ async function checkConditionalRegistrationEnable() {
                 $("#statusConditionalRegistration").text("Conditional create is not supported. Do not continue with mediation.");
                 // Do not continue with mediation
             } else {
-                $("#statusConditionalRegistration").text("Conditional create is supported. Continue with mediation.");
+                console.log("Conditional create is supported. Continue with mediation.");
                 // Continue with mediation
                 return true;
             }
@@ -204,14 +204,14 @@ function base64UrlEncode(arrayBuffer) {
         .replace(/\//g, "_");
 }
 
-function createCredential(options, isConditional) {
+function createCredential(options, addMediation) {
     if (!PublicKeyCredential || typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
         return Promise.reject("WebAuthn APIs are not available on this user agent.");
     }
 
     let publicKeyCredentialCreationOptions = {
         publicKey: options,
-        ...(isConditional && { mediation: "conditional" })
+        ...(addMediation && { mediation: "conditional" })
     };
 
     return navigator.credentials.create(publicKeyCredentialCreationOptions)
